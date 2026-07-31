@@ -1,4 +1,5 @@
 const FREE_UPLOADS_PER_MONTH = 1_000_000;
+const FREE_STORAGE_BYTES_PER_MONTH = 10 * 1024 * 1024 * 1024; // 10 GB
 const STATS_KEY = '_stats';
 
 export default {
@@ -31,7 +32,7 @@ async function handleUpload(request, env) {
     customMetadata: { uploadedAt: Date.now().toString() },
   });
 
-  const stats = await recordUpload(env);
+  const stats = await recordUpload(env, body.byteLength);
 
   return Response.json({ id, stats: statsForClient(stats) });
 }
@@ -78,14 +79,17 @@ async function getStats(env) {
 
   // Si es un mes distinto al guardado, el contador vuelve a empezar en 0.
   if (!stats || stats.month !== month) {
-    return { month, uploads: 0 };
+    return { month, uploads: 0, bytesUploaded: 0 };
   }
-  return stats;
+
+  // Migración: objetos guardados antes de añadir bytesUploaded.
+  return { uploads: 0, bytesUploaded: 0, ...stats };
 }
 
-async function recordUpload(env) {
+async function recordUpload(env, bytes) {
   const stats = await getStats(env);
   stats.uploads += 1;
+  stats.bytesUploaded += bytes;
   await env.BUCKET.put(STATS_KEY, JSON.stringify(stats));
   return stats;
 }
@@ -94,6 +98,8 @@ function statsForClient(stats) {
   return {
     uploads: stats.uploads,
     percentUsed: (stats.uploads / FREE_UPLOADS_PER_MONTH) * 100,
+    bytesUploaded: stats.bytesUploaded,
+    storagePercentUsed: (stats.bytesUploaded / FREE_STORAGE_BYTES_PER_MONTH) * 100,
     daysUntilReset: daysUntilReset(),
   };
 }
