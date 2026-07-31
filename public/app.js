@@ -16,41 +16,52 @@ uploadBtn.addEventListener('click', async () => {
   const file = fileInput.files[0];
   if (!file) return;
 
+  uploadBtn.disabled = true;
   status.textContent = 'Cifrando...';
 
-  // Clave simétrica de 256 bits, generada en el navegador. `true` la marca
-  // "extraíble" para poder exportarla luego y meterla en la URL.
   const key = await crypto.subtle.generateKey(
     { name: 'AES-GCM', length: 256 },
     true,
     ['encrypt', 'decrypt']
   );
-
-  // El IV no es secreto, pero debe ser distinto en cada cifrado con la
-  // misma clave, o GCM deja de garantizar seguridad.
   const iv = crypto.getRandomValues(new Uint8Array(12));
 
+  // Metemos nombre y tipo del archivo DENTRO de lo cifrado, para que el
+  // servidor tampoco los vea: solo recibe bytes opacos.
   const fileBuffer = await file.arrayBuffer();
+  const envelope = JSON.stringify({
+    name: file.name,
+    type: file.type,
+    data: bufferToBase64(fileBuffer),
+  });
+  const envelopeBytes = new TextEncoder().encode(envelope);
+
   const encryptedBuffer = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
-    fileBuffer
+    envelopeBytes
   );
 
-  const rawKey = await crypto.subtle.exportKey('raw', key);
-  const keyBase64 = arrayBufferToBase64Url(rawKey);
-  const ivBase64 = arrayBufferToBase64Url(iv.buffer);
-  const fragment = `${keyBase64}.${ivBase64}`;
+  status.textContent = 'Subiendo...';
 
-  status.textContent = `Cifrado: ${file.size} -> ${encryptedBuffer.byteLength} bytes. Clave generada (siguiente paso: subirlo).`;
-  console.log('Fragment que iría en la URL:', fragment);
-});
+  const uploadResponse = await fetch('/api/upload', {
+    method: 'POST',
+    body: encryptedBuffer,
+  });
 
-function arrayBufferToBase64Url(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
+  if (!uploadResponse.ok) {
+    status.textContent = 'Error al subir el archivo.';
+    uploadBtn.disabled = false;
+    return;
   }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
+
+  const { id } = await uploadResponse.json();
+
+  const rawKey = await crypto.subtle.exportKey('raw', key);
+  const keyFragment = toBase64Url(bufferToBase64(rawKey));
+  const ivFragment = toBase64Url(bufferToBase64(iv.buffer));
+  const shareUrl = `${location.origin}/download.html?id=${id}#${keyFragment}.${ivFragment}`;
+
+  status.innerHTML = `Listo, caduca en 24h o tras la primera descarga:<br><code>${shareUrl}</code>`;
+  uploadBtn.disabled = false;
+});
