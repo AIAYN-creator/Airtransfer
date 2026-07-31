@@ -2,6 +2,26 @@ const fileInput = document.getElementById('file-input');
 const fileLabel = document.getElementById('file-label');
 const uploadBtn = document.getElementById('upload-btn');
 const status = document.getElementById('status');
+const statsFill = document.getElementById('stats-fill');
+const statsText = document.getElementById('stats-text');
+
+function formatPercent(percent) {
+  if (percent === 0) return '0';
+  return percent < 1 ? percent.toFixed(4) : percent.toFixed(2);
+}
+
+function renderStats(stats) {
+  statsFill.style.width = `${Math.min(stats.percentUsed, 100)}%`;
+  const dias = stats.daysUntilReset === 1 ? 'día' : 'días';
+  statsText.textContent =
+    `Has usado el ${formatPercent(stats.percentUsed)}% de tus envíos gratuitos este mes ` +
+    `· se resetea en ${stats.daysUntilReset} ${dias}`;
+}
+
+fetch('/api/stats')
+  .then((res) => (res.ok ? res.json() : null))
+  .then((stats) => stats && renderStats(stats))
+  .catch(() => {});
 
 fileInput.addEventListener('change', () => {
   const file = fileInput.files[0];
@@ -55,7 +75,8 @@ uploadBtn.addEventListener('click', async () => {
     return;
   }
 
-  const { id } = await uploadResponse.json();
+  const { id, stats } = await uploadResponse.json();
+  renderStats(stats);
 
   const rawKey = await crypto.subtle.exportKey('raw', key);
   const keyFragment = toBase64Url(bufferToBase64(rawKey));
