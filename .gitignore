@@ -1,0 +1,11 @@
+# Secretos y config local (nunca deben subirse al repo)
+.env
+.dev.vars
+
+# Cloudflare Workers: carpeta de cache/build local de wrangler
+.wrangler/
+node_modules/
+
+# Archivos de sistema operativo / editor
+.DS_Store
+Thumbs.db
