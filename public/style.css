@@ -93,6 +93,37 @@ button:disabled {
   margin-top: 1rem;
 }
 
+#share-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.qr-wrapper {
+  background: #ffffff;
+  padding: 0.75rem;
+  border-radius: 8px;
+  line-height: 0;
+}
+
+.qr-wrapper svg {
+  width: 160px;
+  height: 160px;
+  display: block;
+}
+
+.share-link {
+  display: block;
+  width: 100%;
+  word-break: break-all;
+  font-size: 0.7rem;
+  color: var(--brand-textdim);
+  background: var(--brand-bg);
+  padding: 0.5rem;
+  border-radius: 6px;
+}
+
 .stats {
   margin-top: 1.5rem;
   text-align: left;

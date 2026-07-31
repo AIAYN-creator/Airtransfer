@@ -2,6 +2,7 @@ const fileInput = document.getElementById('file-input');
 const fileLabel = document.getElementById('file-label');
 const uploadBtn = document.getElementById('upload-btn');
 const status = document.getElementById('status');
+const shareArea = document.getElementById('share-area');
 const uploadsFill = document.getElementById('uploads-fill');
 const uploadsText = document.getElementById('uploads-text');
 const storageFill = document.getElementById('storage-fill');
@@ -50,6 +51,7 @@ fileInput.addEventListener('change', () => {
   fileLabel.textContent = file.name;
   uploadBtn.disabled = false;
   status.textContent = '';
+  shareArea.replaceChildren();
 });
 
 uploadBtn.addEventListener('click', async () => {
@@ -103,6 +105,36 @@ uploadBtn.addEventListener('click', async () => {
   const ivFragment = toBase64Url(bufferToBase64(iv.buffer));
   const shareUrl = `${location.origin}/download.html?id=${id}#${keyFragment}.${ivFragment}`;
 
-  status.innerHTML = `Listo, caduca en 24h o tras la primera descarga:<br><code>${shareUrl}</code>`;
+  status.textContent = 'Listo, caduca en 24h o tras la primera descarga:';
+  renderShareArea(shareUrl);
   uploadBtn.disabled = false;
 });
+
+function renderShareArea(shareUrl) {
+  const qr = qrcode(0, 'M');
+  qr.addData(shareUrl);
+  qr.make();
+
+  const qrWrapper = document.createElement('div');
+  qrWrapper.className = 'qr-wrapper';
+  qrWrapper.innerHTML = qr.createSvgTag({ cellSize: 5, margin: 8, scalable: true });
+
+  const linkCode = document.createElement('code');
+  linkCode.className = 'share-link';
+  linkCode.textContent = shareUrl;
+
+  const copyBtn = document.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.textContent = 'Copiar enlace';
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      copyBtn.textContent = 'Copiado';
+    } catch {
+      copyBtn.textContent = 'No se pudo copiar, selecciona el texto a mano';
+    }
+    setTimeout(() => { copyBtn.textContent = 'Copiar enlace'; }, 2000);
+  });
+
+  shareArea.replaceChildren(qrWrapper, linkCode, copyBtn);
+}
