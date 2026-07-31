@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Airtransfer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="card">
+    <h1>Airtransfer</h1>
+    <p class="subtitle">Envía un archivo cifrado entre tus dispositivos</p>
+
+    <label for="file-input" class="dropzone">
+      <span id="file-label">Elige un archivo</span>
+      <input type="file" id="file-input" hidden />
+    </label>
+
+    <button id="upload-btn" disabled>Subir archivo</button>
+
+    <p id="status"></p>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
