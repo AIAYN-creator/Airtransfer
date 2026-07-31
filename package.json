@@ -1,0 +1,30 @@
+{
+  "name": "airtransfer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AIAYN-creator/Airtransfer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/AIAYN-creator/Airtransfer/issues"
+  },
+  "homepage": "https://github.com/AIAYN-creator/Airtransfer#readme",
+  "devDependencies": {
+    "wrangler": "^4.117.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20260730.1": true
+  }
+}
