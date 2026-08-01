@@ -1,13 +1,14 @@
 const FREE_UPLOADS_PER_MONTH = 1_000_000;
 const FREE_STORAGE_BYTES_PER_MONTH = 10 * 1024 * 1024 * 1024; // 10 GB
 const STATS_KEY = '_stats';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (request.method === 'POST' && url.pathname === '/api/upload') {
-      return handleUpload(request, env);
+      return handleUpload(request, env, url);
     }
 
     if (request.method === 'GET' && url.pathname === '/api/stats') {
@@ -15,17 +16,33 @@ export default {
       return Response.json(statsForClient(stats));
     }
 
-    const match = url.pathname.match(/^\/api\/file\/([a-zA-Z0-9_-]+)$/);
-    if (request.method === 'GET' && match) {
-      return handleDownload(match[1], env, ctx);
+    // Solo IDs con forma de UUID real: así ninguna ruta de lectura/borrado
+    // puede tocar por accidente la clave interna "_stats" ni ninguna otra
+    // clave que no sea un archivo subido de verdad.
+    const statusMatch = url.pathname.match(/^\/api\/status\/([0-9a-f-]+)$/i);
+    if (request.method === 'GET' && statusMatch && UUID_RE.test(statusMatch[1])) {
+      return handleStatus(statusMatch[1], env);
+    }
+
+    const fileMatch = url.pathname.match(/^\/api\/file\/([0-9a-f-]+)$/i);
+    if (request.method === 'GET' && fileMatch && UUID_RE.test(fileMatch[1])) {
+      return handleDownload(fileMatch[1], env, ctx);
     }
 
     return new Response('Not found', { status: 404 });
   },
 };
 
-async function handleUpload(request, env) {
-  const id = crypto.randomUUID();
+async function handleUpload(request, env, url) {
+  // En "modo recibir", quien espera el archivo ya eligió el ID de antemano
+  // (para poder comprobar su llegada sin conocer nada del contenido). Si no
+  // viene ninguno, es una subida normal y lo generamos aquí.
+  const requestedId = url.searchParams.get('id');
+  if (requestedId !== null && !UUID_RE.test(requestedId)) {
+    return new Response('ID inválido', { status: 400 });
+  }
+  const id = requestedId ?? crypto.randomUUID();
+
   const body = await request.arrayBuffer();
 
   await env.BUCKET.put(id, body, {
@@ -35,6 +52,14 @@ async function handleUpload(request, env) {
   const stats = await recordUpload(env, body.byteLength);
 
   return Response.json({ id, stats: statsForClient(stats) });
+}
+
+// Comprobación de "¿ha llegado ya?" para el sondeo periódico del que
+// espera un archivo. A diferencia de handleDownload, NUNCA borra ni
+// descarga el contenido: solo mira si existe.
+async function handleStatus(id, env) {
+  const object = await env.BUCKET.head(id);
+  return Response.json({ ready: object !== null });
 }
 
 async function handleDownload(id, env, ctx) {

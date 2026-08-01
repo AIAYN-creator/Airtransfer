@@ -3,21 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Airtransfer — Descargar</title>
+  <title>Airtransfer — Recibir</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="card">
     <h1>Airtransfer</h1>
-    <p class="subtitle">Tienes un archivo cifrado esperando</p>
+    <p class="subtitle" id="subtitle">Escanea este código con la cámara del otro dispositivo</p>
 
+    <div id="qr-area"></div>
     <div id="action-area"></div>
-
     <p id="status"></p>
+
+    <button id="new-code-btn" hidden>Generar nuevo código</button>
+
+    <p class="nav-link"><a href="index.html">¿Vas a enviar un archivo? Ir a subir</a></p>
   </main>
 
   <script src="crypto-utils.js"></script>
+  <script src="qrcode-lib.js"></script>
   <script src="decrypt-common.js"></script>
-  <script src="download.js"></script>
+  <script src="recibir.js"></script>
 </body>
 </html>

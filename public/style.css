@@ -63,6 +63,10 @@ h1 {
   border-color: var(--brand-gold);
 }
 
+button[hidden] {
+  display: none;
+}
+
 button,
 .btn-link {
   display: block;
@@ -122,6 +126,20 @@ button:disabled {
   background: var(--brand-bg);
   padding: 0.5rem;
   border-radius: 6px;
+}
+
+.nav-link {
+  margin-top: 1.5rem;
+  font-size: 0.8rem;
+}
+
+.nav-link a {
+  color: var(--brand-gold);
+  text-decoration: none;
+}
+
+.nav-link a:hover {
+  text-decoration: underline;
 }
 
 .stats {

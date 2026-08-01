@@ -3,10 +3,22 @@ const fileLabel = document.getElementById('file-label');
 const uploadBtn = document.getElementById('upload-btn');
 const status = document.getElementById('status');
 const shareArea = document.getElementById('share-area');
+const subtitle = document.getElementById('subtitle');
 const uploadsFill = document.getElementById('uploads-fill');
 const uploadsText = document.getElementById('uploads-text');
 const storageFill = document.getElementById('storage-fill');
 const storageText = document.getElementById('storage-text');
+
+// Modo "emparejado": venimos de escanear el QR de recibir.html, que ya
+// generó la clave y solo espera que cifremos con ELLA, no con una propia.
+const pairedParams = new URLSearchParams(location.search);
+const pairedId = pairedParams.get('id');
+const [pairedKeyFragment, pairedIvFragment] = location.hash.slice(1).split('.');
+const isPaired = Boolean(pairedId && pairedKeyFragment && pairedIvFragment);
+
+if (isPaired) {
+  subtitle.textContent = 'Este archivo se enviará cifrado al dispositivo que lo está esperando';
+}
 
 function formatPercent(percent) {
   if (percent === 0) return '0';
@@ -61,12 +73,22 @@ uploadBtn.addEventListener('click', async () => {
   uploadBtn.disabled = true;
   status.textContent = 'Cifrando...';
 
-  const key = await crypto.subtle.generateKey(
-    { name: 'AES-GCM', length: 256 },
-    true,
-    ['encrypt', 'decrypt']
-  );
-  const iv = crypto.getRandomValues(new Uint8Array(12));
+  let key;
+  let iv;
+  if (isPaired) {
+    // La clave ya la generó quien espera el archivo; solo la importamos
+    // para cifrar con ella, nunca la volvemos a exportar ni a mostrar.
+    const rawKey = base64ToBuffer(fromBase64Url(pairedKeyFragment));
+    iv = new Uint8Array(base64ToBuffer(fromBase64Url(pairedIvFragment)));
+    key = await crypto.subtle.importKey('raw', rawKey, 'AES-GCM', false, ['encrypt']);
+  } else {
+    key = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+    iv = crypto.getRandomValues(new Uint8Array(12));
+  }
 
   // Metemos nombre y tipo del archivo DENTRO de lo cifrado, para que el
   // servidor tampoco los vea: solo recibe bytes opacos.
@@ -86,7 +108,8 @@ uploadBtn.addEventListener('click', async () => {
 
   status.textContent = 'Subiendo...';
 
-  const uploadResponse = await fetch('/api/upload', {
+  const uploadUrl = isPaired ? `/api/upload?id=${pairedId}` : '/api/upload';
+  const uploadResponse = await fetch(uploadUrl, {
     method: 'POST',
     body: encryptedBuffer,
   });
@@ -99,6 +122,13 @@ uploadBtn.addEventListener('click', async () => {
 
   const { id, stats } = await uploadResponse.json();
   renderStats(stats);
+
+  if (isPaired) {
+    status.textContent = 'Enviado. Se descargará solo en el otro dispositivo.';
+    fileLabel.textContent = 'Elige un archivo';
+    fileInput.value = '';
+    return;
+  }
 
   const rawKey = await crypto.subtle.exportKey('raw', key);
   const keyFragment = toBase64Url(bufferToBase64(rawKey));
