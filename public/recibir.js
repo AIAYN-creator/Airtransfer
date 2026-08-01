@@ -28,7 +28,10 @@ async function startSession() {
   const keyFragment = toBase64Url(bufferToBase64(rawKey));
   const ivFragment = toBase64Url(bufferToBase64(iv.buffer));
 
-  const sendUrl = `${location.origin}/index.html?id=${id}#${keyFragment}.${ivFragment}`;
+  // Sin ".html": esa ruta redirige a "/" (Cloudflare la normaliza), y ese
+  // salto extra es justo donde un traspaso desde la app de Cámara puede
+  // perder el fragment con la clave. Enlazamos directo a la ruta final.
+  const sendUrl = `${location.origin}/?id=${id}#${keyFragment}.${ivFragment}`;
 
   const qr = qrcode(0, 'M');
   qr.addData(sendUrl);
@@ -97,6 +100,13 @@ async function poll() {
   const { id, keyFragment, ivFragment } = session;
   const ok = await fetchDecryptAndOfferSave(id, keyFragment, ivFragment, status, actionArea);
   if (!ok) newCodeBtn.hidden = false;
+
+  // El contador es global (lo actualizó quien nos envió el archivo desde
+  // su propio dispositivo); refrescamos para verlo al día también aquí.
+  fetch('/api/stats')
+    .then((res) => (res.ok ? res.json() : null))
+    .then((stats) => stats && renderStats(stats))
+    .catch(() => {});
 }
 
 newCodeBtn.addEventListener('click', startSession);

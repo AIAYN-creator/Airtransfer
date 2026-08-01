@@ -4,10 +4,6 @@ const uploadBtn = document.getElementById('upload-btn');
 const status = document.getElementById('status');
 const shareArea = document.getElementById('share-area');
 const subtitle = document.getElementById('subtitle');
-const uploadsFill = document.getElementById('uploads-fill');
-const uploadsText = document.getElementById('uploads-text');
-const storageFill = document.getElementById('storage-fill');
-const storageText = document.getElementById('storage-text');
 
 // Modo "emparejado": venimos de escanear el QR de recibir.html, que ya
 // generó la clave y solo espera que cifremos con ELLA, no con una propia.
@@ -15,58 +11,31 @@ const pairedParams = new URLSearchParams(location.search);
 const pairedId = pairedParams.get('id');
 const [pairedKeyFragment, pairedIvFragment] = location.hash.slice(1).split('.');
 const isPaired = Boolean(pairedId && pairedKeyFragment && pairedIvFragment);
+// Llegó un id de emparejamiento pero sin clave: el enlace se rompió por el
+// camino (p. ej. la app de Cámara perdió el fragment). Mejor avisar claro
+// que caer en modo normal en silencio, subiendo a un id que nadie espera.
+const isBrokenPairing = Boolean(pairedId && !isPaired);
 
 if (isPaired) {
   subtitle.textContent = 'Este archivo se enviará cifrado al dispositivo que lo está esperando';
+} else if (isBrokenPairing) {
+  subtitle.textContent = 'Enlace de emparejamiento incompleto: falta la clave. Vuelve a escanear el código desde "Recibir".';
+  uploadBtn.disabled = true;
 }
-
-function formatPercent(percent) {
-  if (percent === 0) return '0';
-  return percent < 1 ? percent.toFixed(4) : percent.toFixed(2);
-}
-
-function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let value = bytes;
-  let unitIndex = -1;
-  do {
-    value /= 1024;
-    unitIndex++;
-  } while (value >= 1024 && unitIndex < units.length - 1);
-  return `${value.toFixed(1)} ${units[unitIndex]}`;
-}
-
-function renderStats(stats) {
-  const dias = stats.daysUntilReset === 1 ? 'día' : 'días';
-
-  uploadsFill.style.width = `${Math.min(stats.percentUsed, 100)}%`;
-  uploadsText.textContent =
-    `Has usado el ${formatPercent(stats.percentUsed)}% de tus envíos gratuitos este mes ` +
-    `· se resetea en ${stats.daysUntilReset} ${dias}`;
-
-  storageFill.style.width = `${Math.min(stats.storagePercentUsed, 100)}%`;
-  storageText.textContent =
-    `Has usado el ${formatPercent(stats.storagePercentUsed)}% de tu almacenamiento gratuito ` +
-    `(${formatBytes(stats.bytesUploaded)} de 10 GB)`;
-}
-
-fetch('/api/stats')
-  .then((res) => (res.ok ? res.json() : null))
-  .then((stats) => stats && renderStats(stats))
-  .catch(() => {});
 
 fileInput.addEventListener('change', () => {
   const file = fileInput.files[0];
   if (!file) return;
 
   fileLabel.textContent = file.name;
-  uploadBtn.disabled = false;
+  uploadBtn.disabled = isBrokenPairing;
   status.textContent = '';
   shareArea.replaceChildren();
 });
 
 uploadBtn.addEventListener('click', async () => {
+  if (isBrokenPairing) return;
+
   const file = fileInput.files[0];
   if (!file) return;
 
@@ -127,13 +96,15 @@ uploadBtn.addEventListener('click', async () => {
     status.textContent = 'Enviado. Se descargará solo en el otro dispositivo.';
     fileLabel.textContent = 'Elige un archivo';
     fileInput.value = '';
+    uploadBtn.disabled = false;
     return;
   }
 
   const rawKey = await crypto.subtle.exportKey('raw', key);
   const keyFragment = toBase64Url(bufferToBase64(rawKey));
   const ivFragment = toBase64Url(bufferToBase64(iv.buffer));
-  const shareUrl = `${location.origin}/download.html?id=${id}#${keyFragment}.${ivFragment}`;
+  // Sin ".html": esa ruta redirige y es un salto extra innecesario.
+  const shareUrl = `${location.origin}/download?id=${id}#${keyFragment}.${ivFragment}`;
 
   status.textContent = 'Listo, caduca en 24h o tras la primera descarga:';
   renderShareArea(shareUrl);

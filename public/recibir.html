@@ -12,17 +12,28 @@
     <p class="subtitle" id="subtitle">Escanea este código con la cámara del otro dispositivo</p>
 
     <div id="qr-area"></div>
-    <div id="action-area"></div>
-    <p id="status"></p>
 
+    <p id="status"></p>
+    <div id="action-area"></div>
     <button id="new-code-btn" hidden>Generar nuevo código</button>
 
-    <p class="nav-link"><a href="index.html">¿Vas a enviar un archivo? Ir a subir</a></p>
+    <div class="stats">
+      <p class="stats-label">Transferencias</p>
+      <div class="stats-bar"><div class="stats-fill" id="uploads-fill"></div></div>
+      <p id="uploads-text" class="stats-text"></p>
+
+      <p class="stats-label">Almacenamiento</p>
+      <div class="stats-bar"><div class="stats-fill" id="storage-fill"></div></div>
+      <p id="storage-text" class="stats-text"></p>
+    </div>
+
+    <p class="nav-link"><a href="/">¿Vas a enviar un archivo? Ir a subir</a></p>
   </main>
 
   <script src="crypto-utils.js"></script>
   <script src="qrcode-lib.js"></script>
   <script src="decrypt-common.js"></script>
+  <script src="stats-common.js"></script>
   <script src="recibir.js"></script>
 </body>
 </html>
