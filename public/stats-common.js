@@ -34,7 +34,7 @@ function renderStats(stats) {
     `(${formatBytes(stats.bytesUploaded)} de 10 GB)`;
 }
 
-fetch('/api/stats')
+fetch('/api/stats', { cache: 'no-store' })
   .then((res) => (res.ok ? res.json() : null))
   .then((stats) => stats && renderStats(stats))
   .catch(() => {});

@@ -4,7 +4,7 @@
 async function fetchDecryptAndOfferSave(id, keyFragment, ivFragment, statusEl, actionAreaEl) {
   statusEl.textContent = 'Descargando y descifrando...';
 
-  const response = await fetch(`/api/file/${id}`);
+  const response = await fetch(`/api/file/${id}`, { cache: 'no-store' });
 
   if (response.status === 404) {
     statusEl.textContent = 'Archivo no encontrado (o ya fue descargado antes).';

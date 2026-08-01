@@ -81,6 +81,7 @@ uploadBtn.addEventListener('click', async () => {
   const uploadResponse = await fetch(uploadUrl, {
     method: 'POST',
     body: encryptedBuffer,
+    cache: 'no-store',
   });
 
   if (!uploadResponse.ok) {

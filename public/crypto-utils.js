@@ -1,7 +1,13 @@
 function bufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
+  const CHUNK_SIZE = 0x8000;
   let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
+  // Trocear en bloques de 32K: concatenar carácter a carácter es lento en
+  // móviles para archivos de varios MB (fotos reales), y pasar el array
+  // entero de una vez a fromCharCode revienta el límite de argumentos.
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK_SIZE));
+  }
   return btoa(binary);
 }
 

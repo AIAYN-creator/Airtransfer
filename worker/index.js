@@ -13,7 +13,7 @@ export default {
 
     if (request.method === 'GET' && url.pathname === '/api/stats') {
       const stats = await getStats(env);
-      return Response.json(statsForClient(stats));
+      return jsonNoStore(statsForClient(stats));
     }
 
     // Solo IDs con forma de UUID real: así ninguna ruta de lectura/borrado
@@ -29,9 +29,21 @@ export default {
       return handleDownload(fileMatch[1], env, ctx);
     }
 
-    return new Response('Not found', { status: 404 });
+    return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
   },
 };
+
+// Todo lo que sirve este Worker es de usar-una-vez o cambia constantemente
+// (contadores, "¿ha llegado ya?"); si un navegador o proxy intermedio
+// cachea una de estas respuestas, el sondeo de recibir.html se queda
+// mirando para siempre una respuesta vieja. Cache-Control: no-store se lo
+// prohíbe explícitamente a cualquiera en el camino.
+function jsonNoStore(data, init = {}) {
+  return Response.json(data, {
+    ...init,
+    headers: { 'Cache-Control': 'no-store', ...(init.headers ?? {}) },
+  });
+}
 
 async function handleUpload(request, env, url) {
   // En "modo recibir", quien espera el archivo ya eligió el ID de antemano
@@ -39,7 +51,7 @@ async function handleUpload(request, env, url) {
   // viene ninguno, es una subida normal y lo generamos aquí.
   const requestedId = url.searchParams.get('id');
   if (requestedId !== null && !UUID_RE.test(requestedId)) {
-    return new Response('ID inválido', { status: 400 });
+    return new Response('ID inválido', { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
   const id = requestedId ?? crypto.randomUUID();
 
@@ -51,7 +63,7 @@ async function handleUpload(request, env, url) {
 
   const stats = await recordUpload(env, body.byteLength);
 
-  return Response.json({ id, stats: statsForClient(stats) });
+  return jsonNoStore({ id, stats: statsForClient(stats) });
 }
 
 // Comprobación de "¿ha llegado ya?" para el sondeo periódico del que
@@ -59,14 +71,17 @@ async function handleUpload(request, env, url) {
 // descarga el contenido: solo mira si existe.
 async function handleStatus(id, env) {
   const object = await env.BUCKET.head(id);
-  return Response.json({ ready: object !== null });
+  return jsonNoStore({ ready: object !== null });
 }
 
 async function handleDownload(id, env, ctx) {
   const object = await env.BUCKET.get(id);
 
   if (!object) {
-    return new Response('No encontrado o ya descargado', { status: 404 });
+    return new Response('No encontrado o ya descargado', {
+      status: 404,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -77,11 +92,15 @@ async function handleDownload(id, env, ctx) {
   ctx.waitUntil(env.BUCKET.delete(id));
 
   if (isExpired) {
-    return new Response('Archivo expirado', { status: 410 });
+    return new Response('Archivo expirado', { status: 410, headers: { 'Cache-Control': 'no-store' } });
   }
 
   return new Response(object.body, {
-    headers: { 'Content-Type': 'application/octet-stream' },
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-store',
+    },
   });
 }
 

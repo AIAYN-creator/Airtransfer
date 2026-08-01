@@ -83,7 +83,7 @@ async function poll() {
 
   let ready = false;
   try {
-    const res = await fetch(`/api/status/${session.id}`);
+    const res = await fetch(`/api/status/${session.id}`, { cache: 'no-store' });
     if (res.ok) {
       ready = (await res.json()).ready;
     }
@@ -103,7 +103,7 @@ async function poll() {
 
   // El contador es global (lo actualizó quien nos envió el archivo desde
   // su propio dispositivo); refrescamos para verlo al día también aquí.
-  fetch('/api/stats')
+  fetch('/api/stats', { cache: 'no-store' })
     .then((res) => (res.ok ? res.json() : null))
     .then((stats) => stats && renderStats(stats))
     .catch(() => {});
